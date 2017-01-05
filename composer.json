@@ -1,0 +1,23 @@
+{
+  "name": "deimos/cli",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "rez1dent3",
+      "email": "maksim.babichev95@gmail.com"
+    }
+  ],
+  "require": {
+    "ext-mbstring": "*",
+    "deimos/builder": "~0.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "~5.7",
+    "codeclimate/php-test-reporter": "dev-master"
+  },
+  "autoload": {
+    "psr-4": {
+      "Deimos\\": "src/"
+    }
+  }
+}

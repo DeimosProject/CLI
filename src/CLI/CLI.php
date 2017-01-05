@@ -10,9 +10,19 @@ class CLI
     const OPTION            = 3; // -v
 
     /**
-     * @var CLIObject[]
+     * @var ClassProcessor
+     */
+    protected $class;
+
+    /**
+     * @var SelfObject[]
      */
     protected $variables = [];
+
+    /**
+     * @var SelfObject[]
+     */
+    protected $aliases = [];
 
     /**
      * @var string
@@ -43,6 +53,8 @@ class CLI
      * cli constructor.
      *
      * @param array $argv
+     *
+     * @throws \InvalidArgumentException
      */
     public function __construct(array $argv)
     {
@@ -84,15 +96,157 @@ class CLI
      * @param string $fullName
      * @param string $help
      *
-     * @return CLIObject
+     * @return SelfObject
      */
     public function variable($fullName, $help = null)
     {
-        $this->variables[$fullName] = new CLIObject($this->variables, $fullName, $help);
+        $this->variables[$fullName] = new SelfObject($this->variables, $this->aliases, $fullName, $help);
 
         return $this->variables[$fullName];
     }
 
+    /**
+     * @return SelfObject[]
+     */
+    public function variables()
+    {
+        return $this->variables;
+    }
+
+    /**
+     * @return SelfObject[]
+     */
+    public function aliases()
+    {
+        return $this->aliases;
+    }
+
+    /**
+     * @param $string
+     *
+     * @return bool
+     */
+    protected function hasEqual($string)
+    {
+        return $string === '=';
+    }
+
+    /**
+     * @param $string
+     *
+     * @return bool
+     */
+    protected function hasSpace($string)
+    {
+        return in_array($string, [' ', "\t"], true);
+    }
+
+    /**
+     * @param array $variables
+     *
+     * @return array
+     */
+    protected function listBuild(&$variables)
+    {
+        $list = [];
+        foreach ($variables as $key => $variable)
+        {
+            if (is_int($key))
+            {
+                if (empty($list['list']))
+                {
+                    $list['list'] = [$variable];
+                }
+                else
+                {
+                    $list['list'][] = $variable;
+                }
+            }
+            else
+            {
+                $list[$key] = $variable;
+            }
+        }
+
+        return $list;
+    }
+
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    protected function isKey($key)
+    {
+        return $key{0} === '-';
+    }
+
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    protected function isVariable($key)
+    {
+        return $this->isKey($key) && $key{1} === '-';
+    }
+
+    /**
+     * @param string $key
+     *
+     * @return bool
+     */
+    protected function isAlias($key)
+    {
+        return $this->isKey($key) && $key{1} !== '-';
+    }
+
+    /**
+     * @param $class
+     *
+     * @return array
+     */
+    private function classParent($class)
+    {
+        return class_parents($class);
+    }
+
+    /**
+     * @param $class
+     *
+     * @return bool
+     */
+    private function hasCLIClass($class)
+    {
+        return in_array(
+            ClassProcessor::class,
+            $this->classParent($class),
+            true
+        );
+    }
+
+    /**
+     * @param string $class
+     *
+     * @return self
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function setClass($class)
+    {
+        if (!$this->hasCLIClass($class))
+        {
+            throw new \InvalidArgumentException('\'' . ClassProcessor::class . '\' not found');
+        }
+
+        $this->class = $class;
+
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
     public function build()
     {
         $this->attributes = [];
@@ -109,7 +263,7 @@ class CLI
         {
             $token = is_array($token) ? $token[1] : $token;
 
-            if (in_array($token, [' ', "\t"], true))
+            if ($this->hasSpace($token))
             {
                 if ($equal)
                 {
@@ -124,7 +278,7 @@ class CLI
                 $iterator++;
                 continue;
             }
-            else if ($token === '=')
+            else if ($this->hasEqual($token))
             {
                 $equal = true;
                 continue;
@@ -147,7 +301,7 @@ class CLI
             $variables[$variable] = $value;
         }
 
-        return $variables;
+        return $this->listBuild($variables);
     }
 
 }

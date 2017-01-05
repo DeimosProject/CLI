@@ -2,7 +2,7 @@
 
 namespace Deimos\CLI;
 
-class CLIObject
+class SelfObject
 {
 
     /**
@@ -14,6 +14,11 @@ class CLIObject
      * @var string
      */
     protected $fullName;
+
+    /**
+     * @var self[]
+     */
+    protected $aliases;
 
     /**
      * @var int
@@ -33,13 +38,15 @@ class CLIObject
     /**
      * cliObject constructor.
      *
-     * @param array $variables
-     * @param       $fullName
-     * @param       $help
+     * @param array  $variables
+     * @param array  $aliases
+     * @param string $fullName
+     * @param string $help
      */
-    public function __construct(array &$variables, $fullName, $help)
+    public function __construct(array &$variables, array &$aliases, $fullName, $help)
     {
         $this->variables = &$variables;
+        $this->aliases   = &$aliases;
         $this->fullName  = $fullName;
         $this->help      = $help;
     }
@@ -47,11 +54,11 @@ class CLIObject
     /**
      * @param $name
      *
-     * @return $this
+     * @return self
      */
     public function alias($name)
     {
-        $this->variables['-' . $name] = $this;
+        $this->aliases[$name] = $this;
 
         return $this;
     }
@@ -61,7 +68,7 @@ class CLIObject
      */
     public function isRequired()
     {
-        return !$this->isOptional();
+        return $this->required;
     }
 
     /**
@@ -69,13 +76,13 @@ class CLIObject
      */
     public function isOptional()
     {
-        return !$this->required;
+        return !$this->isRequired();
     }
 
     /**
      * set required = true
      *
-     * @return $this
+     * @return self
      */
     public function required()
     {
@@ -85,7 +92,7 @@ class CLIObject
     }
 
     /**
-     * @return $this
+     * @return self
      */
     public function optional()
     {
