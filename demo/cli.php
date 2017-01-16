@@ -1,35 +1,22 @@
-<!--#!/usr/local/bin/php-->
 <?php
 
-include_once __DIR__ . '/../vendor/autoload.php';
+include_once dirname(__DIR__) . '/vendor/autoload.php';
 
-if (empty($argv))
-{
-    $argv = array(
-        0 => 'cli.php',
-        1 => 'hello',
-        2 => 'world',
-        3 => '-v',
-        4 => 'true',
-        5 => '-f',
-        6 => 'yandex',
-        7 => '--migrate',
-        8 => 'deimos',
-    );
-}
+$cli = new \Deimos\CLI\CLI($argv);
 
-$cli = new Deimos\CLI\CLI($argv);
+$cli->variable('file')
+    ->alias('f')
+    ->required();
 
-$cli->variable('verbose')
-    ->alias('v');
+$cli->variable('verbosity')
+    ->alias('v')
+    ->boolType();
 
-$cli->variable('migrate')
-    ->optional()
-    ->alias('m');
+$cli->variable('version')
+    ->alias('ver')
+    ->boolType();
 
-var_dump($cli);
+$cli->run();
 
-var_dump($cli->build());
-
-var_dump($cli->variables());
-var_dump($cli->aliases());
+var_dump($cli->commands());
+var_dump($cli->storage());

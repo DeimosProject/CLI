@@ -2,306 +2,355 @@
 
 namespace Deimos\CLI;
 
+use Deimos\CLI\Exceptions\CLIRun;
+use Deimos\CLI\Exceptions\Required;
+use Deimos\CLI\Exceptions\UndefinedVariable;
+
 class CLI
 {
 
-    const VARIABLE_OPTIONAL = 1; // + default [null]
-    const VARIABLE_REQUIRE  = 2; // throw new \In...
-    const OPTION            = 3; // -v
-
     /**
-     * @var ClassProcessor
+     * @var array
      */
-    protected $class;
+    protected $argv;
 
     /**
-     * @var SelfObject[]
+     * @var array
      */
     protected $variables = [];
 
     /**
-     * @var SelfObject[]
+     * @var array
      */
-    protected $aliases = [];
-
-    /**
-     * @var string
-     */
-    protected $command;
-
-    /**
-     * @var string
-     */
-    protected $normalizeCommand;
+    protected $aliases;
 
     /**
      * @var array
      */
-    protected $originTokens;
+    protected $requiredList;
 
     /**
      * @var array
      */
-    protected $tokens;
+    protected $storage;
 
     /**
      * @var array
      */
-    protected $attributes;
+    protected $commands = [];
 
     /**
-     * cli constructor.
+     * @var bool
+     */
+    protected $run;
+
+    /**
+     * CLI constructor.
      *
      * @param array $argv
-     *
-     * @throws \InvalidArgumentException
      */
     public function __construct(array $argv)
     {
-        array_shift($argv);
-        $this->command = implode(' ', $argv);
+        $this->argv = $argv;
+
+        if (!empty($this->argv))
+        {
+            // remove element [0] *.php
+            array_shift($this->argv);
+        }
     }
 
     /**
-     * normalize command
+     * @param string $name
      *
+     * @return InterfaceVariable
+     */
+    public function variable($name)
+    {
+        return ($this->variables[$name] = new Variable($name));
+    }
+
+    /**
      * @return string
      */
-    protected function normalizeCommand()
+    protected function init()
     {
-        if (!$this->normalizeCommand)
+        $this->aliases      = [];
+        $this->requiredList = [];
+
+        /**
+         * @var $variable Variable
+         */
+        foreach ($this->variables as $variable)
         {
-            $this->normalizeCommand = preg_replace('~(--?[\w:]+)(\s+|=)(\w)~', '$1=$3', $this->command);
-            $this->normalizeCommand = preg_replace('~\s+=\s+~', '=', $this->normalizeCommand);
-        }
+            $this->aliases[$variable->name()] = $variable;
 
-        return $this->normalizeCommand;
-    }
-
-    /**
-     * @return array
-     */
-    protected function originTokens()
-    {
-        if (!$this->originTokens)
-        {
-            $this->originTokens = token_get_all('<?php ' . $this->normalizeCommand());
-            array_shift($this->originTokens);
-        }
-
-        return $this->originTokens;
-    }
-
-    /**
-     * @param string $fullName
-     * @param string $help
-     *
-     * @return SelfObject
-     */
-    public function variable($fullName, $help = null)
-    {
-        $this->variables[$fullName] = new SelfObject($this->variables, $this->aliases, $fullName, $help);
-
-        return $this->variables[$fullName];
-    }
-
-    /**
-     * @return SelfObject[]
-     */
-    public function variables()
-    {
-        return $this->variables;
-    }
-
-    /**
-     * @return SelfObject[]
-     */
-    public function aliases()
-    {
-        return $this->aliases;
-    }
-
-    /**
-     * @param $string
-     *
-     * @return bool
-     */
-    protected function hasEqual($string)
-    {
-        return $string === '=';
-    }
-
-    /**
-     * @param $string
-     *
-     * @return bool
-     */
-    protected function hasSpace($string)
-    {
-        return in_array($string, [' ', "\t"], true);
-    }
-
-    /**
-     * @param array $variables
-     *
-     * @return array
-     */
-    protected function listBuild(&$variables)
-    {
-        $list = [];
-        foreach ($variables as $key => $variable)
-        {
-            if (is_int($key))
+            if ($variable->isRequired())
             {
-                if (empty($list['list']))
-                {
-                    $list['list'] = [$variable];
-                }
-                else
-                {
-                    $list['list'][] = $variable;
-                }
+                $this->requiredList[] = $variable->name();
             }
-            else
+
+            // init aliases
+            foreach ($variable->aliases() as $alias)
             {
-                $list[$key] = $variable;
+                $this->aliases[$alias] = $variable;
             }
         }
 
-        return $list;
+        return implode(' ', $this->argv);
     }
 
     /**
-     * @param string $key
+     * @param $data
      *
-     * @return bool
+     * @return array|mixed
      */
-    protected function isKey($key)
+    protected function value($data)
     {
-        return $key{0} === '-';
+        return is_array($data) && isset($data[1]) ? $data[1] : $data;
     }
 
     /**
-     * @param string $key
-     *
-     * @return bool
+     * @param array $array
      */
-    protected function isVariable($key)
+    protected function initStorage(array &$array)
     {
-        return $this->isKey($key) && $key{1} === '-';
+        foreach ($array as $item)
+        {
+            $value = $this->value($item);
+
+            if (in_array($value, ['-', '--'], false))
+            {
+                break;
+            }
+
+            $data = array_shift($array);
+
+            if ($value !== ' ')
+            {
+                $this->storage[] = $this->value($data);
+            }
+        }
     }
 
     /**
-     * @param string $key
-     *
-     * @return bool
+     * @param array $array
      */
-    protected function isAlias($key)
+    protected function initVariable(array &$array)
     {
-        return $this->isKey($key) && $key{1} !== '-';
+        $isKey = false;
+        $key   = null;
+
+        foreach ($array as $item)
+        {
+            $item  = array_shift($array);
+            $value = $this->value($item);
+
+            if ($value === ' ')
+            {
+                continue;
+            }
+
+            if (!$isKey && in_array($value, ['-', '--'], true))
+            {
+                $isKey = true;
+                continue;
+            }
+
+            if ($isKey)
+            {
+                $key   = $value;
+                $isKey = false;
+
+                $this->commands[$key] = [];
+                continue;
+            }
+
+            $stringValue = '';
+
+            while ($value !== ' ')
+            {
+                if ($value === null)
+                {
+                    break;
+                }
+
+                $stringValue .= $value;
+
+                $item  = array_shift($array);
+                $value = $this->value($item);
+            }
+
+            if (!empty($stringValue))
+            {
+                $this->commands[$key][] = $stringValue;
+            }
+
+        }
     }
 
     /**
-     * @param $class
-     *
+     * @return bool
+     * @throws Required
+     */
+    protected function initRequired()
+    {
+        foreach ($this->requiredList as $name)
+        {
+            /**
+             * @var Variable $variable
+             * @var array    $aliasList
+             */
+            $variable  = $this->variables[$name];
+            $aliasList = $variable->aliases();
+
+            if (!isset($this->commands[$name]))
+            {
+                $keys = array_keys($this->commands);
+                foreach ($aliasList as $alias)
+                {
+                    if (in_array($alias, $keys, true))
+                    {
+                        continue 2;
+                    }
+                }
+
+                throw new Required('Not found required argument \'' . $name . '\'');
+            }
+
+            continue;
+
+        }
+
+        return true;
+    }
+
+    /**
+     * @throws UndefinedVariable
+     */
+    protected function initUndefined()
+    {
+        foreach ($this->commands as $command => &$data)
+        {
+            if (!isset($this->aliases[$command]))
+            {
+                throw new UndefinedVariable('Not found variable \'' . $command . '\'');
+            }
+        }
+    }
+
+    protected function loadCommand(array $commands)
+    {
+        $this->commands = [];
+
+        foreach ($commands as $name => $value)
+        {
+            /**
+             * @var Variable $variable
+             */
+            $variable = $this->aliases[$name];
+
+            if (!empty($value))
+            {
+                $variable->setValue($value);
+            }
+
+            $this->commands[$variable->name()] =
+                $variable->isBoolType()
+                    ?: $variable->value();
+        }
+
+        foreach ($this->variables as $variable)
+        {
+            if (!isset($this->commands[$variable->name()]))
+            {
+                $this->commands[$variable->name()] =
+                    $variable->isBoolType() ? false :
+                        $variable->value();
+            }
+        }
+
+        $this->run = true;
+    }
+
+    public function &commands()
+    {
+        if (!$this->run)
+        {
+            throw new CLIRun('Start the run method');
+        }
+
+        return $this->commands;
+    }
+
+    /**
      * @return array
      */
-    private function classParent($class)
+    public function storage()
     {
-        return class_parents($class);
+        return $this->storage;
     }
 
     /**
-     * @param $class
+     * @param $name
      *
-     * @return bool
+     * @return mixed
+     *
+     * @throws CLIRun
      */
-    private function hasCLIClass($class)
+    public function __get($name)
     {
-        return in_array(
-            ClassProcessor::class,
-            $this->classParent($class),
-            true
-        );
+        $commands = &$this->commands();
+
+        return $commands[$name];
     }
 
     /**
-     * @param string $class
-     *
-     * @return self
+     * @param $name
+     * @param $value
      *
      * @throws \InvalidArgumentException
      */
-    public function setClass($class)
+    final public function __set($name, $value)
     {
-        if (!$this->hasCLIClass($class))
-        {
-            throw new \InvalidArgumentException('\'' . ClassProcessor::class . '\' not found');
-        }
-
-        $this->class = $class;
-
-        return $this;
+        throw new \InvalidArgumentException(__METHOD__);
     }
 
     /**
-     * @return array
+     * @param $name
+     *
+     * @return bool
+     *
+     * @throws CLIRun
      */
-    public function build()
+    public function __isset($name)
     {
-        $this->attributes = [];
-        $variables        = &$this->attributes;
+        $commands = &$this->commands();
 
-        $iterator = 0;
-        $equal    = false;
-        $value    = '';
+        return isset($commands[$name]);
+    }
 
-        $this->tokens = $this->originTokens();
-        $tokens       = &$this->tokens;
-
-        foreach ($tokens as $key => $token)
+    /**
+     * @throws Required
+     * @throws UndefinedVariable
+     * @throws \InvalidArgumentException
+     */
+    public function run()
+    {
+        if ($this->run)
         {
-            $token = is_array($token) ? $token[1] : $token;
-
-            if ($this->hasSpace($token))
-            {
-                if ($equal)
-                {
-                    $variable = $variables[$iterator];
-                    unset($variables[$iterator]);
-
-                    $variables[$variable] = $value;
-                }
-
-                $value = '';
-                $equal = false;
-                $iterator++;
-                continue;
-            }
-            else if ($this->hasEqual($token))
-            {
-                $equal = true;
-                continue;
-            }
-
-            if ($equal)
-            {
-                $value .= $token;
-                continue;
-            }
-
-            $variables[$iterator] .= $token;
+            throw new \InvalidArgumentException(__METHOD__);
         }
 
-        if ($equal)
-        {
-            $variable = $variables[$iterator];
-            unset($variables[$iterator]);
+        $string    = $this->init();
+        $tokenizer = new Tokenizer($string);
 
-            $variables[$variable] = $value;
-        }
-
-        return $this->listBuild($variables);
+        $storage = $tokenizer->run();
+        $this->initStorage($storage);
+        $this->initVariable($storage);
+        $this->initRequired();
+        $this->initUndefined();
+        $this->loadCommand($this->commands);
     }
 
 }
