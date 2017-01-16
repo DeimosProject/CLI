@@ -29,4 +29,11 @@ interface InterfaceVariable
      */
     public function boolType();
 
+    /**
+     * @param string $mixed
+     *
+     * @return static
+     */
+    public function help($mixed);
+
 }

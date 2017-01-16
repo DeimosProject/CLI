@@ -188,7 +188,7 @@ class CLI
                 $value = $this->value($item);
             }
 
-            if (!empty($stringValue))
+            if (strlen($stringValue) > 0)
             {
                 $this->commands[$key][] = $stringValue;
             }
@@ -262,23 +262,30 @@ class CLI
                 $variable = $this->variables[$name];
             }
 
-            if (!empty($value))
+            if (count($value))
             {
+                if ($variable->isBoolType())
+                {
+                    $value = $value[0];
+                }
+
                 $variable->setValue($value);
             }
+            else if ($variable->isBoolType())
+            {
+                $variable->setValue(true);
+            }
 
-            $this->commands[$variable->name()] =
-                $variable->isBoolType()
-                    ?: $variable->value();
+            $this->commands[$variable->name()] = $variable->isBoolType()
+                ? (bool)$variable->value() :
+                $variable->value();
         }
 
         foreach ($this->variables as $variable)
         {
             if (!isset($this->commands[$variable->name()]))
             {
-                $this->commands[$variable->name()] =
-                    $variable->isBoolType() ? false :
-                        $variable->value();
+                $this->commands[$variable->name()] = $variable->value();
             }
         }
 

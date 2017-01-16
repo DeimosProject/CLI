@@ -28,7 +28,17 @@ class Variable implements InterfaceVariable
     /**
      * @var bool
      */
+    protected $isDefaultValue;
+
+    /**
+     * @var bool
+     */
     protected $boolType;
+
+    /**
+     * @var string
+     */
+    protected $help;
 
     /**
      * @var array
@@ -71,6 +81,7 @@ class Variable implements InterfaceVariable
     public function boolType()
     {
         $this->boolType = true;
+        $this->defaultValue(false);
 
         return $this;
     }
@@ -102,13 +113,29 @@ class Variable implements InterfaceVariable
     }
 
     /**
+     * @param $mixed
+     *
+     * @return $this
+     */
+    public function help($mixed)
+    {
+        $this->help = $mixed;
+
+        return $this;
+    }
+
+    /**
      * @param mixed $mixed
      *
      * @return $this
      */
     public function defaultValue($mixed)
     {
-        $this->defaultValue = $mixed;
+        if (!$this->isDefaultValue)
+        {
+            $this->defaultValue   = $mixed;
+            $this->isDefaultValue = true;
+        }
 
         return $this;
     }
@@ -126,7 +153,7 @@ class Variable implements InterfaceVariable
      */
     public function value()
     {
-        if (!empty($this->value))
+        if ($this->value !== [])
         {
             return $this->value;
         }

@@ -10,13 +10,14 @@ $cli->variable('file')
 
 $cli->variable('verbosity')
     ->alias('v')
+    ->defaultValue(true)
     ->boolType();
 
 $cli->variable('version')
     ->alias('ver')
-    ->boolType();
+    ->boolType()
+    ->help('Get version info');
 
 $cli->run();
 
 var_dump($cli->commands());
-var_dump($cli->storage());
