@@ -83,8 +83,6 @@ class CLI
          */
         foreach ($this->variables as $variable)
         {
-            $this->aliases[$variable->name()] = $variable;
-
             if ($variable->isRequired())
             {
                 $this->requiredList[] = $variable->name();
@@ -135,11 +133,14 @@ class CLI
 
     /**
      * @param array $array
+     *
+     * @throws UndefinedVariable
      */
     protected function initVariable(array &$array)
     {
-        $isKey = false;
-        $key   = null;
+        $isAlias = false;
+        $isKey   = false;
+        $key     = null;
 
         foreach ($array as $item)
         {
@@ -153,7 +154,8 @@ class CLI
 
             if (!$isKey && in_array($value, ['-', '--'], true))
             {
-                $isKey = true;
+                $isAlias = $value === '-';
+                $isKey   = true;
                 continue;
             }
 
@@ -161,6 +163,11 @@ class CLI
             {
                 $key   = $value;
                 $isKey = false;
+
+                if ($isAlias && !isset($this->aliases[$key]))
+                {
+                    throw new UndefinedVariable('Not found alias \'' . $key . '\'');
+                }
 
                 $this->commands[$key] = [];
                 continue;
@@ -232,7 +239,7 @@ class CLI
     {
         foreach ($this->commands as $command => &$data)
         {
-            if (!isset($this->aliases[$command]))
+            if (!isset($this->variables[$command]) && !isset($this->aliases[$command]))
             {
                 throw new UndefinedVariable('Not found variable \'' . $command . '\'');
             }
@@ -249,6 +256,11 @@ class CLI
              * @var Variable $variable
              */
             $variable = $this->aliases[$name];
+
+            if ($variable === null)
+            {
+                $variable = $this->variables[$name];
+            }
 
             if (!empty($value))
             {
