@@ -292,7 +292,7 @@ class CLI
         $this->run = true;
     }
 
-    public function &commands()
+    protected function &commands()
     {
         if (!$this->run)
         {
@@ -311,6 +311,16 @@ class CLI
     }
 
     /**
+     * @return array
+     *
+     * @throws CLIRun
+     */
+    public function asArray()
+    {
+        return $this->commands();
+    }
+
+    /**
      * @param $name
      *
      * @return mixed
@@ -319,6 +329,15 @@ class CLI
      */
     public function __get($name)
     {
+        if (isset($this->aliases[$name]))
+        {
+            /**
+             * @var Variable $variable
+             */
+            $variable = $this->aliases[$name];
+            $name     = $variable->name();
+        }
+
         $commands = &$this->commands();
 
         return $commands[$name];

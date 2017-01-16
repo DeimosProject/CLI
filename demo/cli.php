@@ -20,4 +20,5 @@ $cli->variable('version')
 
 $cli->run();
 
-var_dump($cli->commands());
+var_dump($cli->asArray());
+var_dump($cli->storage());
