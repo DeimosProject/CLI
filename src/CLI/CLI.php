@@ -76,7 +76,38 @@ class CLI
     }
 
     /**
+     * @param Variable $variable
+     */
+    protected function required(Variable $variable)
+    {
+        if ($variable->isRequired())
+        {
+            $this->requiredList[] = $variable->name();
+        }
+    }
+
+    /**
+     * @param Variable $variable
+     */
+    protected function initAliases(Variable $variable)
+    {
+        // init aliases
+        foreach ($variable->aliases() as $alias)
+        {
+            $this->aliases[$alias] = $variable;
+        }
+    }
+
+    /**
      * @return string
+     */
+    protected function argvString()
+    {
+        return implode(' ', $this->argv);
+    }
+
+    /**
+     * init cli
      */
     protected function init()
     {
@@ -88,19 +119,9 @@ class CLI
          */
         foreach ($this->variables as $variable)
         {
-            if ($variable->isRequired())
-            {
-                $this->requiredList[] = $variable->name();
-            }
-
-            // init aliases
-            foreach ($variable->aliases() as $alias)
-            {
-                $this->aliases[$alias] = $variable;
-            }
+            $this->required($variable);
+            $this->initAliases($variable);
         }
-
-        return implode(' ', $this->argv);
     }
 
     /**
@@ -399,7 +420,8 @@ class CLI
          */
         foreach ($this->variables as $variable)
         {
-            $variables[$variable->name()] = [
+            $variables[] = [
+                'variable' => $variable->name(),
                 'help'     => $variable->getHelp(),
                 'aliases'  => $variable->aliases(),
                 'required' => $variable->isRequired(),
@@ -431,20 +453,27 @@ class CLI
      */
     protected function row(array $item)
     {
-        $storage = [];
-
         $aliases = array_map(function ($alias)
         {
             return '-' . $alias;
         }, $item['aliases']);
 
-        $storage['aliases'] = implode(', ', $aliases);
+        return [
+            // variable
+            '--' . $item['variable'],
 
-        $storage['required'] = $item['required'] ? 'yes' : 'no';
-        $storage['boolean']  = $item['boolean'] ? 'yes' : 'no';
-        $storage['help']     = $item['help'];
+            // aliases list
+            implode(', ', $aliases),
 
-        return $storage;
+            // required
+            $item['required'] ? 'yes' : 'no',
+
+            // boolean
+            $item['boolean'] ? 'yes' : 'no',
+
+            // help
+            $item['help']
+        ];
     }
 
     /**
@@ -534,7 +563,9 @@ class CLI
             ->boolType()
             ->help('Help me! Command List');
 
-        $string = $this->init();
+        $this->init();
+
+        $string = $this->argvString();
         $this->execute($string);
         $this->display();
     }
