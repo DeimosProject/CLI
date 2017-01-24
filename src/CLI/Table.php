@@ -116,7 +116,7 @@ class Table
         $output =
             $this->well($row) .
             $options['padding'] .
-            str_pad($options['cell'], $options['width'], $row ? ' ' : ' - ') .
+            str_pad($options['cell'], $options['width'], $row ? ' ' : '-') .
             $options['padding'];
 
         if ($options['index'] === count($row) - 1)
@@ -136,9 +136,9 @@ class Table
     private function getCellOutput($index, $row = null)
     {
         return $this->cellOutput($row, [
-            'cell'    => $row ? $row[$index] : ' - ',
+            'cell'    => $row ? $row[$index] : '-',
             'width'   => $this->columnWidths[$index],
-            'padding' => str_repeat($row ? ' ' : ' - ', 1),
+            'padding' => str_repeat($row ? ' ' : '-', 1),
             'index'   => $index,
         ]);
     }
@@ -150,7 +150,7 @@ class Table
      */
     protected function well($row)
     {
-        return $row ? ' | ' : ' + ';
+        return $row ? '|' : '+';
     }
 
     /**
