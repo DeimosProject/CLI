@@ -48,7 +48,7 @@ class Variable implements InterfaceVariable
     /**
      * Variable constructor.
      *
-     * @param $name
+     * @param string $name
      */
     public function __construct($name)
     {
