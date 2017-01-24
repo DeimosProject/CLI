@@ -487,11 +487,6 @@ class CLI
         }, $array));
     }
 
-    protected function bool($type)
-    {
-        return $type ? 'yes' : 'no';
-    }
-
     /**
      * @param array $item
      *
@@ -501,8 +496,8 @@ class CLI
     {
         $variable = '--' . $item['variable'];
         $aliases  = $this->toAlias($item['aliases']);
-        $required = $this->bool($item['required']);
-        $boolean  = $this->bool($item['boolean']);
+        $required = $item['required'];
+        $boolean  = $item['boolean'];
         $help     = $item['help'];
 
         return [$variable, $aliases, $required, $boolean, $help];

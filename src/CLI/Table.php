@@ -48,6 +48,11 @@ class Table
 
         foreach ($data as $col => $content)
         {
+            if (is_bool($content))
+            {
+                $content = $content ? 'yes' : 'no';
+            }
+
             $this->data[$this->rowIndex][$col] = $content;
         }
 
