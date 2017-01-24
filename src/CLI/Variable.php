@@ -133,7 +133,7 @@ class Variable implements InterfaceVariable
     }
 
     /**
-     * @param mixed $mixed
+     * @param boolean $mixed
      *
      * @return $this
      */
