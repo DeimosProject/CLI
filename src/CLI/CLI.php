@@ -327,9 +327,22 @@ class CLI
                 $variable->setValue(true);
             }
 
+            $valueStorage = $variable->value();
+
+            if (!$variable->isBoolType() && is_array($valueStorage))
+            {
+                foreach ($valueStorage as $k => $val)
+                {
+                    if (in_array($val{0}, ['\'', '"'], false))
+                    {
+                        $valueStorage[$k] = substr($val, 1, -1);
+                    }
+                }
+            }
+
             $this->commands[$variable->name()] = $variable->isBoolType()
-                ? (bool)$variable->value() :
-                $variable->value();
+                ? (bool)$valueStorage :
+                $valueStorage;
         }
 
         foreach ($this->variables as $variable)
@@ -477,7 +490,7 @@ class CLI
      */
     protected function row(array $item)
     {
-        $variable = $item['variable'];
+        $variable = '--' . $item['variable'];
         $aliases  = $this->toAlias($item['aliases']);
         $required = $this->bool($item['required']);
         $boolean  = $this->bool($item['boolean']);
@@ -557,6 +570,8 @@ class CLI
     }
 
     /**
+     * @return self
+     *
      * @throws Required
      * @throws UndefinedVariable
      * @throws \InvalidArgumentException
@@ -565,7 +580,7 @@ class CLI
     {
         if ($this->run)
         {
-            $this->errorList[] = new \InvalidArgumentException(__METHOD__);
+            return $this;
         }
 
         $this->variable('help')
@@ -578,6 +593,8 @@ class CLI
         $string = $this->argvString();
         $this->execute($string);
         $this->display();
+
+        return $this;
     }
 
 }
