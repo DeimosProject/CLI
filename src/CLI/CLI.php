@@ -448,10 +448,10 @@ class CLI
 
     protected function toAlias(array $array)
     {
-        return array_map(function ($alias)
+        return implode(', ', array_map(function ($alias)
         {
             return '-' . $alias;
-        }, $array);
+        }, $array));
     }
 
     protected function bool($type)
