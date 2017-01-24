@@ -40,6 +40,11 @@ class CLI
     protected $commands = [];
 
     /**
+     * @var array
+     */
+    protected $errorList = [];
+
+    /**
      * @var bool
      */
     protected $run;
@@ -164,9 +169,16 @@ class CLI
                 $key   = $value;
                 $isKey = false;
 
-                if ($isAlias && !isset($this->aliases[$key]))
+                if ($isAlias)
                 {
-                    throw new UndefinedVariable('Not found alias \'' . $key . '\'');
+                    if (!isset($this->aliases[$key]))
+                    {
+                        $this->errorList[] = new UndefinedVariable('Not found alias \'' . $key . '\'');
+                    }
+                }
+                else if (!isset($this->variables[$key]))
+                {
+                    $this->errorList[] = new UndefinedVariable('Not found variable \'' . $key . '\'');
                 }
 
                 $this->commands[$key] = [];
@@ -222,7 +234,7 @@ class CLI
                     }
                 }
 
-                throw new Required('Not found required argument \'' . $name . '\'');
+                $this->errorList[] = new Required('Not found required argument \'' . $name . '\'');
             }
 
             continue;
@@ -241,7 +253,7 @@ class CLI
         {
             if (!isset($this->variables[$command]) && !isset($this->aliases[$command]))
             {
-                throw new UndefinedVariable('Not found variable \'' . $command . '\'');
+                $this->errorList[] = new UndefinedVariable('Not found variable \'' . $command . '\'');
             }
         }
     }
@@ -255,10 +267,17 @@ class CLI
             /**
              * @var Variable $variable
              */
-            $variable = $this->aliases[$name];
+            $variable = isset($this->aliases[$name])
+                ? $this->aliases[$name]
+                : null;
 
             if ($variable === null)
             {
+                if (!isset($this->variables[$name]))
+                {
+                    throw new \InvalidArgumentException('Not found variable/alias \'' . $name . '\'');
+                }
+
                 $variable = $this->variables[$name];
             }
 
@@ -296,7 +315,7 @@ class CLI
     {
         if (!$this->run)
         {
-            throw new CLIRun('Start the run method');
+            $this->errorList[] = new CLIRun('Start the run method');
         }
 
         return $this->commands;
@@ -307,7 +326,7 @@ class CLI
      */
     public function storage()
     {
-        return $this->storage;
+        return $this->storage ?: [];
     }
 
     /**
@@ -369,6 +388,114 @@ class CLI
     }
 
     /**
+     * @return array
+     */
+    public function help()
+    {
+        $variables = [];
+
+        /**
+         * @var Variable $variable
+         */
+        foreach ($this->variables as $variable)
+        {
+            $variables[$variable->name()] = [
+                'help'     => $variable->getHelp(),
+                'aliases'  => $variable->aliases(),
+                'required' => $variable->isRequired(),
+                'boolean'  => $variable->isBoolType(),
+            ];
+        }
+
+        return $variables;
+    }
+
+    /**
+     * display table
+     */
+    protected function _help()
+    {
+        $table = (new Table())
+            ->addHeader('Variable')
+            ->addHeader('Aliases')
+            ->addHeader('Required')
+            ->addHeader('Boolean')
+            ->addHeader('Help');
+
+        foreach ($this->help() as $key => $item)
+        {
+            $item['aliases'] = array_map(function ($alias)
+            {
+                return '-' . $alias;
+            }, $item['aliases']);
+
+            $table->addRow([
+                '--' . $key,
+                implode(', ', $item['aliases']),
+                $item['required'] ? 'yes' : 'no',
+                $item['boolean'] ? 'yes' : 'no',
+                $item['help'],
+            ]);
+        }
+
+        die($table);
+    }
+
+    protected function message(\Exception $error)
+    {
+        print 'Message: ' . $error->getMessage() . PHP_EOL . PHP_EOL;
+
+        $this->_help();
+    }
+
+    /**
+     * display to cli
+     */
+    protected function display()
+    {
+
+        if ($this->commands['help'])
+        {
+            $this->_help();
+        }
+
+        $error = current($this->errorList);
+
+        if ($error instanceof \Exception)
+        {
+            $this->message($error);
+        }
+
+    }
+
+    /**
+     * @param $string
+     */
+    protected function execute($string)
+    {
+        $tokenizer = new Tokenizer($string);
+
+        try
+        {
+            if (PHP_SAPI !== 'cli')
+            {
+                throw new \InvalidArgumentException('\'PHP_SAPI\' not equal \'cli\'');
+            }
+
+            $storage = $tokenizer->run();
+            $this->initStorage($storage);
+            $this->initVariable($storage);
+            $this->initRequired();
+            $this->initUndefined();
+            $this->loadCommand($this->commands);
+        }
+        catch (\Exception $exception)
+        {
+            $this->message($exception);
+        }
+    }
+
+    /**
      * @throws Required
      * @throws UndefinedVariable
      * @throws \InvalidArgumentException
@@ -377,18 +504,17 @@ class CLI
     {
         if ($this->run)
         {
-            throw new \InvalidArgumentException(__METHOD__);
+            $this->errorList[] = new \InvalidArgumentException(__METHOD__);
         }
 
-        $string    = $this->init();
-        $tokenizer = new Tokenizer($string);
+        $this->variable('help')
+            ->alias('h')
+            ->boolType()
+            ->help('Help me! Command List');
 
-        $storage = $tokenizer->run();
-        $this->initStorage($storage);
-        $this->initVariable($storage);
-        $this->initRequired();
-        $this->initUndefined();
-        $this->loadCommand($this->commands);
+        $string = $this->init();
+        $this->execute($string);
+        $this->display();
     }
 
 }

@@ -125,6 +125,14 @@ class Variable implements InterfaceVariable
     }
 
     /**
+     * @return string
+     */
+    public function getHelp()
+    {
+        return $this->help;
+    }
+
+    /**
      * @param mixed $mixed
      *
      * @return $this
