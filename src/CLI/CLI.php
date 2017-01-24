@@ -446,6 +446,19 @@ class CLI
         ];
     }
 
+    protected function toAlias(array $array)
+    {
+        return array_map(function ($alias)
+        {
+            return '-' . $alias;
+        }, $array);
+    }
+
+    protected function bool($type)
+    {
+        return $type ? 'yes' : 'no';
+    }
+
     /**
      * @param array $item
      *
@@ -453,27 +466,13 @@ class CLI
      */
     protected function row(array $item)
     {
-        $aliases = array_map(function ($alias)
-        {
-            return '-' . $alias;
-        }, $item['aliases']);
+        $variable = $item['variable'];
+        $aliases  = $this->toAlias($item['aliases']);
+        $required = $this->bool($item['required']);
+        $boolean  = $this->bool($item['boolean']);
+        $help     = $item['help'];
 
-        return [
-            // variable
-            '--' . $item['variable'],
-
-            // aliases list
-            implode(', ', $aliases),
-
-            // required
-            $item['required'] ? 'yes' : 'no',
-
-            // boolean
-            $item['boolean'] ? 'yes' : 'no',
-
-            // help
-            $item['help']
-        ];
+        return [$variable, $aliases, $required, $boolean, $help];
     }
 
     /**
