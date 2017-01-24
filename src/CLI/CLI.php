@@ -230,36 +230,47 @@ class CLI
     }
 
     /**
+     * @param Variable $variable
+     * @param array    $keys
+     */
+    protected function findAliases(Variable $variable, array $keys)
+    {
+        $aliasList = $variable->aliases();
+        $name      = $variable->name();
+
+        if (!isset($this->commands[$name]))
+        {
+            foreach ($aliasList as $alias)
+            {
+                if (in_array($alias, $keys, true))
+                {
+                    return;
+                }
+            }
+
+            $this->errorList[] = new Required('Not found required argument \'' . $name . '\'');
+        }
+
+    }
+
+    /**
      * @return bool
      * @throws Required
      */
     protected function initRequired()
     {
+        $keys = array_keys($this->commands);
+
         foreach ($this->requiredList as $name)
         {
             /**
              * @var Variable $variable
              * @var array    $aliasList
              */
-            $variable  = $this->variables[$name];
-            $aliasList = $variable->aliases();
-
-            if (!isset($this->commands[$name]))
-            {
-                $keys = array_keys($this->commands);
-                foreach ($aliasList as $alias)
-                {
-                    if (in_array($alias, $keys, true))
-                    {
-                        continue 2;
-                    }
-                }
-
-                $this->errorList[] = new Required('Not found required argument \'' . $name . '\'');
-            }
+            $variable = $this->variables[$name];
+            $this->findAliases($variable, $keys);
 
             continue;
-
         }
 
         return true;
