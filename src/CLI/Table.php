@@ -111,14 +111,20 @@ class Table
         return $output . "+\n";
     }
 
-    /**
-     * @param $index
-     * @param $row
-     * @param $output
-     */
-    private function repeatAndWell($index, $row, &$output)
+    private function cellOutput($row, array $options)
     {
-        $output .= $this->well($row);
+        $output =
+            $this->well($row) .
+            $options['padding'] .
+            str_pad($options['cell'], $options['width'], $row ? ' ' : ' - ') .
+            $options['padding'];
+
+        if ($options['index'] === count($row) - 1)
+        {
+            $output .= $this->well($row);
+        }
+
+        return $output;
     }
 
     /**
@@ -129,24 +135,12 @@ class Table
      */
     private function getCellOutput($index, $row = null)
     {
-        $cell    = $row ? $row[$index] : ' - ';
-        $width   = $this->columnWidths[$index];
-        $padding = str_repeat($row ? ' ' : ' - ', 1);
-
-        $output = '';
-        $this->repeatAndWell($index, $row, $output);
-
-        $output .=
-            $padding .
-            str_pad($cell, $width, $row ? ' ' : ' - ') .
-            $padding;
-
-        if ($index === count($row) - 1)
-        {
-            $output .= $this->well($row);
-        }
-
-        return $output;
+        return $this->cellOutput($row, [
+            'cell'    => $row ? $row[$index] : ' - ',
+            'width'   => $this->columnWidths[$index],
+            'padding' => str_repeat($row ? ' ' : ' - ', 1),
+            'index'   => $index,
+        ]);
     }
 
     /**
