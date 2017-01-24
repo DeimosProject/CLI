@@ -394,7 +394,21 @@ class CLI
     }
 
     /**
-     * @param $name
+     * @param string $name
+     *
+     * @return mixed
+     *
+     * @throws CLIRun
+     */
+    public function get($name)
+    {
+        $commands = $this->asArray();
+
+        return $commands[$name];
+    }
+
+    /**
+     * @param string $name
      *
      * @return mixed
      *
@@ -402,18 +416,7 @@ class CLI
      */
     public function __get($name)
     {
-        if (isset($this->aliases[$name]))
-        {
-            /**
-             * @var Variable $variable
-             */
-            $variable = $this->aliases[$name];
-            $name     = $variable->name();
-        }
-
-        $commands = &$this->commands();
-
-        return $commands[$name];
+        return $this->get($name);
     }
 
     /**
