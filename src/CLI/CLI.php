@@ -411,33 +411,53 @@ class CLI
     }
 
     /**
+     * @return array
+     */
+    protected function columns()
+    {
+        return [
+            'Variable',
+            'Aliases',
+            'Required',
+            'Boolean',
+            'Help'
+        ];
+    }
+
+    /**
+     * @param array $item
+     *
+     * @return array
+     */
+    protected function row(array $item)
+    {
+        $storage = [];
+
+        $aliases = array_map(function ($alias)
+        {
+            return '-' . $alias;
+        }, $item['aliases']);
+
+        $storage['aliases'] = implode(', ', $aliases);
+
+        $storage['required'] = $item['required'] ? 'yes' : 'no';
+        $storage['boolean']  = $item['boolean'] ? 'yes' : 'no';
+        $storage['help']     = $item['help'];
+
+        return $storage;
+    }
+
+    /**
      * display table
      */
     protected function _help()
     {
-        $table = (new Table())
-            ->setHeaders([
-                'Variable',
-                'Aliases',
-                'Required',
-                'Boolean',
-                'Help'
-            ]);
+        $table = new Table();
+        $table->setHeaders($this->columns());
 
         foreach ($this->help() as $key => $item)
         {
-            $item['aliases'] = array_map(function ($alias)
-            {
-                return '-' . $alias;
-            }, $item['aliases']);
-
-            $table->addRow([
-                '--' . $key,
-                implode(', ', $item['aliases']),
-                $item['required'] ? 'yes' : 'no',
-                $item['boolean'] ? 'yes' : 'no',
-                $item['help'],
-            ]);
+            $table->addRow($this->row($item));
         }
 
         die($table);
