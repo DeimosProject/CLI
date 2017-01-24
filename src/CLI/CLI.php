@@ -347,7 +347,16 @@ class CLI
 
         foreach ($this->variables as $variable)
         {
-            if (!isset($this->commands[$variable->name()]))
+            if (isset($this->commands[$variable->name()]))
+            {
+                if ($variable->isRequired() && empty($this->commands[$variable->name()]))
+                {
+                    $this->errorList[] = new UndefinedVariable(
+                        'Required argument is empty \'' . $variable->name() . '\''
+                    );
+                }
+            }
+            else
             {
                 $this->commands[$variable->name()] = $variable->value();
             }
