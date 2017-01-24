@@ -55,18 +55,6 @@ class Table
     private $columnWidths = [];
 
     /**
-     * @param string $content
-     *
-     * @return $this
-     */
-    public function addHeader($content = '')
-    {
-        $this->data[self::HEADER_INDEX][] = $content;
-
-        return $this;
-    }
-
-    /**
      * @param array $content
      *
      * @return $this
@@ -99,27 +87,6 @@ class Table
         {
             $this->data[$this->rowIndex][$col] = $content;
         }
-
-        return $this;
-    }
-
-    /**
-     * @param      $content
-     * @param int  $col
-     * @param int  $row
-     *
-     * @return $this
-     */
-    public function addColumn($content, $col = null, $row = null)
-    {
-        $row = $row ?: $this->rowIndex;
-
-        if ($col === null)
-        {
-            $col = isset($this->data[$row]) ? count($this->data[$row]) : 0;
-        }
-
-        $this->data[$row][$col] = $content;
 
         return $this;
     }
@@ -182,6 +149,7 @@ class Table
             {
                 $output .= $this->getCellOutput($x, $row);
             }
+
             $output .= "\n";
 
             if ($y === self::HEADER_INDEX)
@@ -201,6 +169,7 @@ class Table
     {
         $output      = '';
         $columnCount = count($this->data[0]);
+
         for ($col = 0; $col < $columnCount; $col++)
         {
             $output .= $this->getCellOutput($col);
@@ -210,6 +179,7 @@ class Table
         {
             $output .= '+';
         }
+
         $output .= "\n";
 
         return $output;
@@ -225,7 +195,6 @@ class Table
     {
         $cell    = $row ? $row[$index] : '-';
         $width   = $this->columnWidths[$index];
-        $pad     = $row ? $width - strlen($cell) : $width;
         $padding = str_repeat($row ? ' ' : '-', $this->padding);
 
         $output = '';
@@ -237,18 +206,29 @@ class Table
 
         if ($this->border)
         {
-            $output .= $row ? '|' : '+';
+            $output .= $this->well($row);
         }
 
         $output .= $padding;
         $output .= str_pad($cell, $width, $row ? ' ' : '-');
         $output .= $padding;
+
         if (($index === count($row) - 1) && $this->border)
         {
-            $output .= $row ? '|' : '+';
+            $output .= $this->well($row);
         }
 
         return $output;
+    }
+
+    /**
+     * @param $row
+     *
+     * @return string
+     */
+    protected function well($row)
+    {
+        return $row ? '|' : '+';
     }
 
     /**
@@ -260,13 +240,13 @@ class Table
         {
             foreach ($row as $x => $col)
             {
-                if (!isset($this->columnWidths[$x]))
+                $result = strlen($col);
+
+                if (!isset($this->columnWidths[$x]) ||
+                    ($result > $this->columnWidths[$x])
+                )
                 {
-                    $this->columnWidths[$x] = strlen($col);
-                }
-                else if (strlen($col) > $this->columnWidths[$x])
-                {
-                    $this->columnWidths[$x] = strlen($col);
+                    $this->columnWidths[$x] = $result;
                 }
             }
         }

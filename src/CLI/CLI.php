@@ -416,11 +416,13 @@ class CLI
     protected function _help()
     {
         $table = (new Table())
-            ->addHeader('Variable')
-            ->addHeader('Aliases')
-            ->addHeader('Required')
-            ->addHeader('Boolean')
-            ->addHeader('Help');
+            ->setHeaders([
+                'Variable',
+                'Aliases',
+                'Required',
+                'Boolean',
+                'Help'
+            ]);
 
         foreach ($this->help() as $key => $item)
         {
