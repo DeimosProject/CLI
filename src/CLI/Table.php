@@ -1,18 +1,4 @@
 <?php
-/**
- * This file is part of the PHPLucidFrame library.
- * The class makes you easy to build console style tables
- *
- * @package     PHPLucidFrame\Console
- * @since       PHPLucidFrame v 1.12.0
- * @copyright   Copyright (c), PHPLucidFrame.
- * @author      Sithu K. <cithukyaw@gmail.com>
- * @link        http://phplucidframe.github.io
- * @license     http://www.opensource.org/licenses/mit-license.php MIT License
- *
- * This source file is subject to the MIT license that is bundled
- * with this source code in the file LICENSE
- */
 
 namespace Deimos\CLI;
 
@@ -28,21 +14,6 @@ class Table
      * @var array
      */
     protected $data = [];
-
-    /**
-     * @var bool
-     */
-    protected $border = true;
-
-    /**
-     * @var int
-     */
-    protected $padding = 1;
-
-    /**
-     * @var int
-     */
-    protected $indent = 0;
 
     /**
      * @var int
@@ -67,14 +38,6 @@ class Table
     }
 
     /**
-     * @return mixed|null
-     */
-    public function getHeaders()
-    {
-        return isset($this->data[self::HEADER_INDEX]) ? $this->data[self::HEADER_INDEX] : null;
-    }
-
-    /**
      * @param array $data
      *
      * @return $this
@@ -92,47 +55,25 @@ class Table
     }
 
     /**
-     * @return $this
+     * @param array $row
+     * @param       $y
+     * @param       $output
      */
-    public function showBorder()
+    private function output(array $row, $y, &$output)
     {
-        $this->border = true;
 
-        return $this;
-    }
+        foreach ($row as $x => $cell)
+        {
+            $output .= $this->getCellOutput($x, $row);
+        }
 
-    /**
-     * @return $this
-     */
-    public function hideBorder()
-    {
-        $this->border = false;
+        $output .= PHP_EOL;
 
-        return $this;
-    }
+        if ($y === self::HEADER_INDEX)
+        {
+            $output .= $this->getBorderLine();
+        }
 
-    /**
-     * @param int $value
-     *
-     * @return $this
-     */
-    public function setPadding($value = 1)
-    {
-        $this->padding = $value;
-
-        return $this;
-    }
-
-    /**
-     * @param int $value
-     *
-     * @return $this
-     */
-    public function setIndent($value = 0)
-    {
-        $this->indent = $value;
-
-        return $this;
     }
 
     /**
@@ -142,22 +83,14 @@ class Table
     {
         $this->calculateColumnWidth();
 
-        $output = $this->border ? $this->getBorderLine() : '';
+        $output = $this->getBorderLine();
+
         foreach ($this->data as $y => $row)
         {
-            foreach ($row as $x => $cell)
-            {
-                $output .= $this->getCellOutput($x, $row);
-            }
-
-            $output .= "\n";
-
-            if ($y === self::HEADER_INDEX)
-            {
-                $output .= $this->getBorderLine();
-            }
+            $this->output($row, $y, $output);
         }
-        $output .= $this->border ? $this->getBorderLine() : '';
+
+        $output .= $this->getBorderLine();
 
         return $output;
     }
@@ -175,14 +108,17 @@ class Table
             $output .= $this->getCellOutput($col);
         }
 
-        if ($this->border)
-        {
-            $output .= '+';
-        }
+        return $output . "+\n";
+    }
 
-        $output .= "\n";
-
-        return $output;
+    /**
+     * @param $index
+     * @param $row
+     * @param $output
+     */
+    private function repeatAndWell($index, $row, &$output)
+    {
+        $output .= $this->well($row);
     }
 
     /**
@@ -193,27 +129,19 @@ class Table
      */
     private function getCellOutput($index, $row = null)
     {
-        $cell    = $row ? $row[$index] : '-';
+        $cell    = $row ? $row[$index] : ' - ';
         $width   = $this->columnWidths[$index];
-        $padding = str_repeat($row ? ' ' : '-', $this->padding);
+        $padding = str_repeat($row ? ' ' : ' - ', 1);
 
         $output = '';
+        $this->repeatAndWell($index, $row, $output);
 
-        if ($index === 0)
-        {
-            $output .= str_repeat(' ', $this->indent);
-        }
+        $output .=
+            $padding .
+            str_pad($cell, $width, $row ? ' ' : ' - ') .
+            $padding;
 
-        if ($this->border)
-        {
-            $output .= $this->well($row);
-        }
-
-        $output .= $padding;
-        $output .= str_pad($cell, $width, $row ? ' ' : '-');
-        $output .= $padding;
-
-        if (($index === count($row) - 1) && $this->border)
+        if ($index === count($row) - 1)
         {
             $output .= $this->well($row);
         }
@@ -228,7 +156,25 @@ class Table
      */
     protected function well($row)
     {
-        return $row ? '|' : '+';
+        return $row ? ' | ' : ' + ';
+    }
+
+    /**
+     * @param array $row
+     */
+    private function calculateRow(array $row)
+    {
+        foreach ($row as $x => $col)
+        {
+            $result = strlen($col);
+
+            if (!isset($this->columnWidths[$x]) ||
+                ($result > $this->columnWidths[$x])
+            )
+            {
+                $this->columnWidths[$x] = $result;
+            }
+        }
     }
 
     /**
@@ -236,19 +182,12 @@ class Table
      */
     private function calculateColumnWidth()
     {
+        /**
+         * @var array $row
+         */
         foreach ($this->data as $y => $row)
         {
-            foreach ($row as $x => $col)
-            {
-                $result = strlen($col);
-
-                if (!isset($this->columnWidths[$x]) ||
-                    ($result > $this->columnWidths[$x])
-                )
-                {
-                    $this->columnWidths[$x] = $result;
-                }
-            }
+            $this->calculateRow($row);
         }
 
         return $this->columnWidths;
